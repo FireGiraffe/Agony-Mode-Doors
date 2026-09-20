@@ -1,40 +1,28 @@
 -- Favorites Mode
--- Natural Threat spawning + real Doors bottom text
+-- Threat + Ripper
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local localPlayer = Players.LocalPlayer
 
--- Load Entity Spawner
-local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Functions.lua"))()
+local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/DOORS-Entity-Spawner-V2/main/init.luau"))()
 
--- Real Doors bottom text function
 local function DoorsBottomText(text)
-	local success = pcall(function()
+	pcall(function()
 		local MainGame = require(localPlayer.PlayerGui.MainUI.Initiator.Main_Game)
 		MainGame.caption(text, true)
 	end)
-	
-	if not success then
-		game:GetService("StarterGui"):SetCore("SendNotification", {
-			Title = "Favorites Mode",
-			Text = text,
-			Duration = 5
-		})
-	end
 end
 
--- Show the message when the mode loads
 DoorsBottomText("Favorites Mode Activated")
 
--- Settings for Threat
+-- Shared settings
 local MIN_DOOR = 8
 local MAX_DOOR = 98
-local SPAWN_CHANCE = 12 -- % chance per door
-local hasSpawned = false
+local hasSpawnedThreat = false
+local hasSpawnedRipper = false
 local currentDoor = 0
 
--- Get current door number
 local function getDoorNumber()
 	local success, result = pcall(function()
 		return require(localPlayer.PlayerGui.MainUI.Initiator.Main_Game).currentRoom or 0
@@ -42,18 +30,16 @@ local function getDoorNumber()
 	return success and result or 0
 end
 
--- Spawn Threat
+-- ====================== THREAT ======================
 local function spawnThreat()
-	if hasSpawned then return end
-	hasSpawned = true
-
+	if hasSpawnedThreat then return end
+	hasSpawnedThreat = true
 	print("[Favorites Mode] Threat is spawning...")
 
-	-- Tint lights pink
 	local pinkColor = Color3.fromRGB(255, 20, 147)
-	for _, light in pairs(workspace:GetDescendants()) do
-		if light:IsA("PointLight") or light:IsA("SpotLight") then
-			light.Color = pinkColor
+	for _, v in pairs(workspace:GetDescendants()) do
+		if v:IsA("PointLight") or v:IsA("SpotLight") then
+			v.Color = pinkColor
 		end
 	end
 
@@ -82,16 +68,11 @@ local function spawnThreat()
 			Delay = 2
 		},
 		Lights = {
-			Flicker = {
-				Enabled = true,
-				Duration = 1
-			},
+			Flicker = {Enabled = true, Duration = 1},
 			Shatter = false,
 			Repair = false
 		},
-		Earthquake = {
-			Enabled = true
-		},
+		Earthquake = {Enabled = true},
 		CameraShake = {
 			Enabled = true,
 			Values = {1.8, 25, 0.1, 1},
@@ -120,7 +101,6 @@ local function spawnThreat()
 		local model = Threat.Model
 		if not model then return end
 
-		-- Spawn sound
 		local spawnSound = Instance.new("Sound")
 		spawnSound.SoundId = "rbxassetid://3359047385"
 		spawnSound.Volume = 2
@@ -128,7 +108,6 @@ local function spawnThreat()
 		spawnSound:Play()
 		game:GetService("Debris"):AddItem(spawnSound, 5)
 
-		-- Base sound
 		local baseSound = Instance.new("Sound")
 		baseSound.SoundId = "rbxassetid://92141520425325"
 		baseSound.Volume = 1.8
@@ -140,6 +119,91 @@ local function spawnThreat()
 	Threat:Run(true)
 end
 
+-- ====================== RIPPER ======================
+local function spawnRipper()
+	if hasSpawnedRipper then return end
+	hasSpawnedRipper = true
+	print("[Favorites Mode] Ripper is spawning...")
+
+	-- Turn lights deep red (Ripper's signature)
+	local redColor = Color3.fromRGB(180, 20, 20)
+	for _, v in pairs(workspace:GetDescendants()) do
+		if v:IsA("PointLight") or v:IsA("SpotLight") then
+			v.Color = redColor
+		end
+	end
+	Lighting.Ambient = Color3.fromRGB(80, 10, 10)
+
+	local Ripper = Spawner:Create({
+		Entity = {
+			Name = "Ripper",
+			Asset = "https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/main/Ripper.rbxm",
+			HeightOffset = 0
+		},
+		Movement = {
+			Speed = 280,          -- very fast
+			Delay = 1.5,
+			Reversed = false
+		},
+		Damage = {
+			Enabled = true,
+			IgnoreHiding = false,
+			Range = 50,
+			Amount = 125
+		},
+		Rebounding = {
+			Enabled = false,      -- Ripper does NOT rebound like Ambush
+			Type = "Ambush",
+			Min = 1,
+			Max = 1,
+			Delay = 2
+		},
+		Lights = {
+			Flicker = {Enabled = false}, -- no normal flicker, just red
+			Shatter = false,
+			Repair = false
+		},
+		Earthquake = {Enabled = true},
+		CameraShake = {
+			Enabled = true,
+			Values = {2.5, 30, 0.1, 1},
+			Range = 140
+		},
+		Crucifixion = {
+			Type = "Curious",
+			Enabled = true,
+			Range = 40,
+			Resist = false,
+			Break = true
+		},
+		Death = {
+			Type = "Guiding",
+			Hints = {
+				"You died to Ripper.",
+				"The room turned red...",
+				"He is much faster than Rush.",
+				"Hide until he is gone."
+			},
+			Cause = "Ripper"
+		}
+	})
+
+	Ripper:SetCallback("OnSpawned", function()
+		local model = Ripper.Model
+		if not model then return end
+
+		-- Loud roar (you can replace the ID later if you have the real one)
+		local roar = Instance.new("Sound")
+		roar.SoundId = "rbxassetid://12971875415" -- placeholder roar
+		roar.Volume = 3
+		roar.Parent = workspace
+		roar:Play()
+		game:GetService("Debris"):AddItem(roar, 6)
+	end)
+
+	Ripper:Run(true)
+end
+
 -- Natural spawning loop
 task.spawn(function()
 	while true do
@@ -149,13 +213,19 @@ task.spawn(function()
 		if door > currentDoor then
 			currentDoor = door
 
-			if door >= MIN_DOOR and door <= MAX_DOOR and not hasSpawned then
-				if math.random(1, 100) <= SPAWN_CHANCE then
+			if door >= MIN_DOOR and door <= MAX_DOOR then
+				-- Threat chance
+				if not hasSpawnedThreat and math.random(1, 100) <= 15 then
 					spawnThreat()
+				end
+
+				-- Ripper chance
+				if not hasSpawnedRipper and math.random(1, 100) <= 12 then
+					spawnRipper()
 				end
 			end
 		end
 	end
 end)
 
-print("[Favorites Mode] Successfully loaded")
+print("[Favorites Mode] Loaded with Threat + Ripper")
