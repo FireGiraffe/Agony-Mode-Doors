@@ -1,3 +1,3 @@
-# Agony-Mode-Doors
-Made with images by users in a Discord server for their custom entities :3
+# Favorites-Mode-Doors
+A Doors mode containing all of my favorite entities across different Doors Modes.
 work in progress!!!
