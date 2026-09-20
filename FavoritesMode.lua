@@ -1,109 +1,161 @@
-print("Favorites Mode: Initializing Threat Custom Setting...")
+-- Favorites Mode
+-- Natural Threat spawning + real Doors bottom text
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
+local localPlayer = Players.LocalPlayer
 
--- 1. Grab Vynixu's Framework Source
-local Creator = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Doors%20Entity%20Spawner/Source.lua"))()
+-- Load Entity Spawner
+local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/Utilities/main/Functions.lua"))()
 
--- 2. Clean Atmosphere Configuration
-local function ApplyFavoritesSettings()
-    Lighting.Ambient = Color3.fromRGB(15, 10, 8)
-    Lighting.Brightness = 0.5
-    Lighting.FogEnd = 100
+-- Real Doors bottom text function
+local function DoorsBottomText(text)
+	local success = pcall(function()
+		local MainGame = require(localPlayer.PlayerGui.MainUI.Initiator.Main_Game)
+		MainGame.caption(text, true)
+	end)
+	
+	if not success then
+		game:GetService("StarterGui"):SetCore("SendNotification", {
+			Title = "Favorites Mode",
+			Text = text,
+			Duration = 5
+		})
+	end
 end
 
-ApplyFavoritesSettings()
+-- Show the message when the mode loads
+DoorsBottomText("Favorites Mode Activated")
 
--- 3. Construct the Threat Entity Template
-local Threat = Creator.createEntity({
-    CustomName = "Threat",
-    Model = "rbxassetid://132786450712083", 
-    Speed = 95,
-    DelayTime = 2.5,
-    HeightOffset = 0,
-    CanKill = true,
-    KillRange = 45,
-    BreakLights = false,
-    FlickerLights = {
-        Enabled = false
-    },
-    Cycles = {
-        Min = 4,
-        Max = 8,
-        WaitTime = 1.7
-    },
-    CamShake = {
-        Enabled = true,
-        Values = {2.2, 28, 0.1, 1},
-        Range = 130
-    },
-    ResistCrucifix = false,
-    BreakCrucifix = true,
-    DeathMessage = {
-        "You died to Threat.",
-        "The lights turned pink...",
-        "It only gets faster.",
-        "Hide next time."
-    }
-})
+-- Settings for Threat
+local MIN_DOOR = 8
+local MAX_DOOR = 98
+local SPAWN_CHANCE = 12 -- % chance per door
+local hasSpawned = false
+local currentDoor = 0
 
--- OnSpawn Visual and Sound Triggers
-Threat.Debug.OnEntitySpawned = function()
-    local oldAmbient = Lighting.Ambient
-    local oldColorShift = Lighting.ColorShift_Top
-
-    Lighting.Ambient = Color3.fromRGB(170, 30, 110)
-    Lighting.ColorShift_Top = Color3.fromRGB(255, 40, 140)
-
-    local spawnSound = Instance.new("Sound")
-    spawnSound.SoundId = "rbxassetid://3359047385"
-    spawnSound.Volume = 2
-    spawnSound.Parent = Workspace
-    spawnSound:Play()
-    game:GetService("Debris"):AddItem(spawnSound, 5)
-
-    local baseSound = Instance.new("Sound")
-    baseSound.SoundId = "rbxassetid://92141520425325"
-    baseSound.Volume = 1.8
-    baseSound.Looped = true
-    baseSound.Parent = Workspace
-    baseSound:Play()
-
-    task.delay(14, function()
-        if baseSound then
-            baseSound:Stop()
-            baseSound:Destroy()
-        end
-        Lighting.Ambient = oldAmbient
-        Lighting.ColorShift_Top = oldColorShift
-    end)
+-- Get current door number
+local function getDoorNumber()
+	local success, result = pcall(function()
+		return require(localPlayer.PlayerGui.MainUI.Initiator.Main_Game).currentRoom or 0
+	end)
+	return success and result or 0
 end
 
--- 4. Hook Into the Running Game Engine's Room Tracker
-local CurrentRooms = Workspace:WaitForChild("CurrentRooms")
-local lastSpawnedDoor = 0
+-- Spawn Threat
+local function spawnThreat()
+	if hasSpawned then return end
+	hasSpawned = true
 
-local function checkNewRoom(room)
-    local doorNumber = tonumber(room.Name)
-    if not doorNumber or doorNumber <= lastSpawnedDoor then return end
-    
-    lastSpawnedDoor = doorNumber
+	print("[Favorites Mode] Threat is spawning...")
 
-    -- 15% Chance to roll for Threat when opening a new door
-    local spawnChance = math.random(1, 100)
-    if spawnChance <= 15 then 
-        -- Block spawns during stationary scripted events (Door 0, 50, 100)
-        if doorNumber > 2 and doorNumber ~= 50 and doorNumber ~= 100 then
-            task.wait(1) -- Slight delay after door opens for atmospheric tension
-            print("Threat has successfully rolled a spawn for Door: " .. doorNumber)
-            Creator.runEntity(Threat)
-        end
-    end
+	-- Tint lights pink
+	local pinkColor = Color3.fromRGB(255, 20, 147)
+	for _, light in pairs(workspace:GetDescendants()) do
+		if light:IsA("PointLight") or light:IsA("SpotLight") then
+			light.Color = pinkColor
+		end
+	end
+
+	local Threat = Spawner:Create({
+		Entity = {
+			Name = "Threat",
+			Asset = "https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/main/Threat.rbxm",
+			HeightOffset = 0
+		},
+		Movement = {
+			Speed = 225,
+			Delay = 2,
+			Reversed = false
+		},
+		Damage = {
+			Enabled = true,
+			IgnoreHiding = false,
+			Range = 45,
+			Amount = 125
+		},
+		Rebounding = {
+			Enabled = true,
+			Type = "Ambush",
+			Min = 5,
+			Max = 8,
+			Delay = 2
+		},
+		Lights = {
+			Flicker = {
+				Enabled = true,
+				Duration = 1
+			},
+			Shatter = false,
+			Repair = false
+		},
+		Earthquake = {
+			Enabled = true
+		},
+		CameraShake = {
+			Enabled = true,
+			Values = {1.8, 25, 0.1, 1},
+			Range = 120
+		},
+		Crucifixion = {
+			Type = "Curious",
+			Enabled = true,
+			Range = 40,
+			Resist = false,
+			Break = true
+		},
+		Death = {
+			Type = "Guiding",
+			Hints = {
+				"You died to Threat.",
+				"The lights turn pink signaling its arrival.",
+				"Threat is extremely loud.",
+				"Use what you've learned from Ambush!"
+			},
+			Cause = "Threat"
+		}
+	})
+
+	Threat:SetCallback("OnSpawned", function()
+		local model = Threat.Model
+		if not model then return end
+
+		-- Spawn sound
+		local spawnSound = Instance.new("Sound")
+		spawnSound.SoundId = "rbxassetid://3359047385"
+		spawnSound.Volume = 2
+		spawnSound.Parent = workspace
+		spawnSound:Play()
+		game:GetService("Debris"):AddItem(spawnSound, 5)
+
+		-- Base sound
+		local baseSound = Instance.new("Sound")
+		baseSound.SoundId = "rbxassetid://92141520425325"
+		baseSound.Volume = 1.8
+		baseSound.Looped = true
+		baseSound.Parent = model
+		baseSound:Play()
+	end)
+
+	Threat:Run(true)
 end
 
--- Listen for future rooms added while playing
-CurrentRooms.ChildAdded:Connect(checkNewRoom)
+-- Natural spawning loop
+task.spawn(function()
+	while true do
+		task.wait(1)
 
-print("Thank you for using Favorites Mode.")
+		local door = getDoorNumber()
+		if door > currentDoor then
+			currentDoor = door
+
+			if door >= MIN_DOOR and door <= MAX_DOOR and not hasSpawned then
+				if math.random(1, 100) <= SPAWN_CHANCE then
+					spawnThreat()
+				end
+			end
+		end
+	end
+end)
+
+print("[Favorites Mode] Successfully loaded")
