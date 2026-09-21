@@ -87,7 +87,7 @@ local function spawnThreat()
 		Rebounding = {Enabled = true, Type = "Ambush", Min = 5, Max = 8, Delay = 2},
 		Lights = {Flicker = {Enabled = true, Duration = 1}, Shatter = false, Repair = false},
 		Earthquake = {Enabled = true},
-		CameraShake = {Enabled = true, Values = {1.8, 25, 0.1, 1}, Range = 120},
+		CameraShake = {Enabled = true, Values = {1.8, 75, 0.1, 1}, Range = 120},
 		Crucifixion = {Type = "Curious", Enabled = true, Range = 40, Resist = false, Break = true},
 		Death = {
 			Type = "Guiding",
