@@ -7,9 +7,6 @@ local localPlayer = Players.LocalPlayer
 -- thing that actually spawns entities
 local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/DOORS-Entity-Spawner-V2/main/init.luau"))()
 
--- sprint
-loadstring(game:HttpGet("https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/refs/heads/main/Sprint.lua"))()
-
 local function DoorsBottomText(...)
 	local messages = {...}
 	
@@ -379,5 +376,9 @@ LatestRoom:GetPropertyChangedSignal("Value"):Connect(function()
 		spawnRebound(false)
 	end
 end)
+
+task.wait(10)
+-- sprint
+loadstring(game:HttpGet("https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/refs/heads/main/Sprint.lua"))() 
 
 print("Thanks for using Favorites Mode.")
