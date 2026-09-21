@@ -6,7 +6,7 @@ local localPlayer = Players.LocalPlayer
 
 local Spawner = loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/DOORS-Entity-Spawner-V2/main/init.luau"))()
 
-loadstring(game:Httpget("https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/refs/heads/main/Sprint.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/refs/heads/main/Sprint.lua"))()
 
 local function DoorsBottomText(...)
 	local messages = {...}
