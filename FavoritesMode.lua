@@ -21,7 +21,6 @@ local function DoorsBottomText(...)
 	end)
 end
 
--- text for like original creators yea
 DoorsBottomText(
 	"Favorites Mode Activated",
 	"Made as a collection for my favorite entities.",
@@ -34,15 +33,20 @@ local LatestRoom = ReplicatedStorage:WaitForChild("GameData"):WaitForChild("Late
 local MIN_DOOR = 8
 local MAX_DOOR = 98
 
-local hasSpawnedThreat = false
-local hasSpawnedRipper = false
-local hasSpawnedCease = false
-local hasSpawnedRebound = false
 local entityActive = false
 
--- rebound stuff
+-- rebound tracking
 local reboundActive = false
 local reboundRoomsLeft = 0
+
+-- Cooldown tracker so entities don't spawn back-to-back immediately (door counts)
+local lastSpawnedRooms = {
+	Threat = -10,
+	Ripper = -10,
+	Cease = -10,
+	Rebound = -10
+}
+local COOLDOWN_DOORS = 5 -- Minimum rooms between the same entity appearing
 
 local function isSafeToSpawn()
 	local door = LatestRoom.Value
@@ -61,9 +65,9 @@ end
 -- THREAT
 -------------------------------------------------
 local function spawnThreat()
-	if hasSpawnedThreat or entityActive or not isSafeToSpawn() then return end
-	hasSpawnedThreat = true
+	if entityActive or not isSafeToSpawn() then return end
 	entityActive = true
+	lastSpawnedRooms.Threat = LatestRoom.Value
 	print("[Favorites Mode] Threat spawning")
 
 	local pinkColor = Color3.fromRGB(255, 20, 147)
@@ -123,9 +127,9 @@ end
 -- RIPPER
 -------------------------------------------------
 local function spawnRipper()
-	if hasSpawnedRipper or entityActive or not isSafeToSpawn() then return end
-	hasSpawnedRipper = true
+	if entityActive or not isSafeToSpawn() then return end
 	entityActive = true
+	lastSpawnedRooms.Ripper = LatestRoom.Value
 	print("[Favorites Mode] Ripper spawning")
 
 	local redColor = Color3.fromRGB(180, 20, 20)
@@ -181,9 +185,9 @@ end
 -- CEASE
 -------------------------------------------------
 local function spawnCease()
-	if hasSpawnedCease or entityActive or not isSafeToSpawn() then return end
-	hasSpawnedCease = true
+	if entityActive or not isSafeToSpawn() then return end
 	entityActive = true
+	lastSpawnedRooms.Cease = LatestRoom.Value
 	print("[Favorites Mode] Cease spawning")
 
 	local blueColor = Color3.fromRGB(40, 80, 200)
@@ -201,7 +205,7 @@ local function spawnCease()
 			HeightOffset = 0
 		},
 		Movement = {Speed = 110, Delay = 1.5, Reversed = false},
-		Damage = {Enabled = false, IgnoreHiding = true, Range = 55, Amount = 125}, -- disabled normal damage
+		Damage = {Enabled = false, IgnoreHiding = true, Range = 55, Amount = 125},
 		Rebounding = {Enabled = false, Type = "Ambush", Min = 1, Max = 1, Delay = 2},
 		Lights = {Flicker = {Enabled = false}, Shatter = false, Repair = false},
 		Earthquake = {Enabled = false},
@@ -230,7 +234,6 @@ local function spawnCease()
 
 			local distance = (root.Position - model:GetPivot().Position).Magnitude
 
-			-- Only kill if player is moving AND within 100 studs
 			if humanoid.MoveDirection.Magnitude > 0.1 and distance <= 100 then
 				humanoid.Health = 0
 			end
@@ -255,6 +258,9 @@ local function spawnRebound(isRespawn)
 	if not isSafeToSpawn() then return end
 
 	entityActive = true
+	if not isRespawn then
+		lastSpawnedRooms.Rebound = LatestRoom.Value
+	end
 	print("[Favorites Mode] Rebound", isRespawn and "respawning" or "spawning")
 
 	local lightBlue = Color3.fromRGB(100, 160, 255)
@@ -267,9 +273,9 @@ local function spawnRebound(isRespawn)
 
 	local sound = Instance.new("Sound")
 	if isRespawn then
-		sound.SoundId = "rbxassetid://103418561127185" -- respawn sound
+		sound.SoundId = "rbxassetid://103418561127185"
 	else
-		sound.SoundId = "rbxassetid://136836151370178" -- first spawn sound
+		sound.SoundId = "rbxassetid://136836151370178"
 	end
 	sound.Volume = 2.5
 	sound.Parent = workspace
@@ -294,7 +300,7 @@ local function spawnRebound(isRespawn)
 			Amount = 100
 		},
 		Rebounding = {
-			Enabled = false, 
+			Enabled = false,
 			Type = "Ambush",
 			Min = 1,
 			Max = 1,
@@ -322,7 +328,7 @@ local function spawnRebound(isRespawn)
 			Type = "Guiding",
 			Hints = {
 				"You died to Rebound.",
-				"He will keep coming from the front multiple times for every door you open.",
+				"He will keep coming back multiple times for every door you open.",
 				"Study rooms to find a place to hide.",
 				"He goes away eventually."
 			},
@@ -338,17 +344,17 @@ local function spawnRebound(isRespawn)
 end
 
 -------------------------------------------------
--- spawning for entities
+-- Spawning Logic
 -------------------------------------------------
 LatestRoom:GetPropertyChangedSignal("Value"):Connect(function()
 	local door = LatestRoom.Value
 	if door < MIN_DOOR or door > MAX_DOOR then return end
 	if not isSafeToSpawn() then return end
 
-	-- Rebound multi-room logic
+	-- Rebound multi-room cycle
 	if reboundActive and reboundRoomsLeft > 0 then
 		reboundRoomsLeft -= 1
-		spawnRebound(true) 
+		spawnRebound(true)
 		if reboundRoomsLeft <= 0 then
 			reboundActive = false
 		end
@@ -359,26 +365,24 @@ LatestRoom:GetPropertyChangedSignal("Value"):Connect(function()
 
 	local roll = math.random(1, 100)
 
-	-- spawn rates
-	if not hasSpawnedThreat and roll <= 14 then
+	-- cooldowns + now they respawn yippee
+	if (door - lastSpawnedRooms.Threat >= COOLDOWN_DOORS) and roll <= 14 then
 		spawnThreat()
 
-	elseif not hasSpawnedRipper and roll <= 20 then
+	elseif (door - lastSpawnedRooms.Ripper >= COOLDOWN_DOORS) and roll <= 20 then
 		spawnRipper()
 
-	elseif not hasSpawnedCease and roll <= 26 then
+	elseif (door - lastSpawnedRooms.Cease >= COOLDOWN_DOORS) and roll <= 26 then
 		spawnCease()
 
-	elseif not hasSpawnedRebound and roll <= 18 then
-		hasSpawnedRebound = true
+	elseif (door - lastSpawnedRooms.Rebound >= COOLDOWN_DOORS) and roll <= 18 then
 		reboundActive = true
-		reboundRoomsLeft = math.random(4, 6)
+		reboundRoomsLeft = math.random(3, 5)
 		spawnRebound(false)
 	end
 end)
 
 task.wait(10)
--- sprint
-loadstring(game:HttpGet("https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/refs/heads/main/Sprint.lua"))() 
+loadstring(game:HttpGet("https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/refs/heads/main/Sprint.lua"))()
 
 print("Thanks for using Favorites Mode.")
