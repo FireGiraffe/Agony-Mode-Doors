@@ -203,7 +203,7 @@ local function spawnCease()
 			Asset = "https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/main/Cease.rbxm",
 			HeightOffset = 0
 		},
-		Movement = {Speed = 140, Delay = 1.5, Reversed = false},
+		Movement = {Speed = 110, Delay = 1.5, Reversed = false},
 		Damage = {Enabled = false, IgnoreHiding = true, Range = 55, Amount = 125}, -- disabled normal damage
 		Rebounding = {Enabled = false, Type = "Ambush", Min = 1, Max = 1, Delay = 2},
 		Lights = {Flicker = {Enabled = false}, Shatter = false, Repair = false},
