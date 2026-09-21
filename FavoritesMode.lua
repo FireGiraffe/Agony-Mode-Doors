@@ -79,7 +79,7 @@ local function spawnThreat()
 			Asset = "https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/main/Threat.rbxm",
 			HeightOffset = 0
 		},
-		Movement = {Speed = 225, Delay = 2, Reversed = false},
+		Movement = {Speed = 225, Delay = 1, Reversed = false},
 		Damage = {Enabled = true, IgnoreHiding = false, Range = 45, Amount = 125},
 		Rebounding = {Enabled = true, Type = "Ambush", Min = 5, Max = 8, Delay = 2},
 		Lights = {Flicker = {Enabled = true, Duration = 1}, Shatter = false, Repair = false},
