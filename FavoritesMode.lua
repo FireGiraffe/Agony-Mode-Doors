@@ -1,7 +1,9 @@
--- Favorites Mode
+-- Favorites Mode (Full)
 -- Threat + Ripper
+-- Fixed: Threat sound doesn't loop + entities can't spawn together
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 local localPlayer = Players.LocalPlayer
 
@@ -16,25 +18,22 @@ end
 
 DoorsBottomText("Favorites Mode Activated")
 
--- Shared settings
+local LatestRoom = ReplicatedStorage:WaitForChild("GameData"):WaitForChild("LatestRoom")
+
 local MIN_DOOR = 8
 local MAX_DOOR = 98
 local hasSpawnedThreat = false
 local hasSpawnedRipper = false
-local currentDoor = 0
+local entityActive = false          -- prevents both spawning at once
 
-local function getDoorNumber()
-	local success, result = pcall(function()
-		return require(localPlayer.PlayerGui.MainUI.Initiator.Main_Game).currentRoom or 0
-	end)
-	return success and result or 0
-end
-
--- ====================== THREAT ======================
+-------------------------------------------------
+-- THREAT
+-------------------------------------------------
 local function spawnThreat()
-	if hasSpawnedThreat then return end
+	if hasSpawnedThreat or entityActive then return end
 	hasSpawnedThreat = true
-	print("[Favorites Mode] Threat is spawning...")
+	entityActive = true
+	print("[Favorites Mode] Threat is spawning on door", LatestRoom.Value)
 
 	local pinkColor = Color3.fromRGB(255, 20, 147)
 	for _, v in pairs(workspace:GetDescendants()) do
@@ -101,6 +100,7 @@ local function spawnThreat()
 		local model = Threat.Model
 		if not model then return end
 
+		-- Spawn sound (plays once)
 		local spawnSound = Instance.new("Sound")
 		spawnSound.SoundId = "rbxassetid://3359047385"
 		spawnSound.Volume = 2
@@ -108,24 +108,31 @@ local function spawnThreat()
 		spawnSound:Play()
 		game:GetService("Debris"):AddItem(spawnSound, 5)
 
+		-- Base sound (plays once, NO loop)
 		local baseSound = Instance.new("Sound")
 		baseSound.SoundId = "rbxassetid://92141520425325"
 		baseSound.Volume = 1.8
-		baseSound.Looped = true
+		baseSound.Looped = false          -- fixed
 		baseSound.Parent = model
 		baseSound:Play()
+	end)
+
+	Threat:SetCallback("OnDespawned", function()
+		entityActive = false
 	end)
 
 	Threat:Run(true)
 end
 
--- ====================== RIPPER ======================
+-------------------------------------------------
+-- RIPPER (roar → wait 3.5s → spawn)
+-------------------------------------------------
 local function spawnRipper()
-	if hasSpawnedRipper then return end
+	if hasSpawnedRipper or entityActive then return end
 	hasSpawnedRipper = true
-	print("[Favorites Mode] Ripper is spawning...")
+	entityActive = true
+	print("[Favorites Mode] Ripper roar started on door", LatestRoom.Value)
 
-	-- Turn lights deep red (Ripper's signature)
 	local redColor = Color3.fromRGB(180, 20, 20)
 	for _, v in pairs(workspace:GetDescendants()) do
 		if v:IsA("PointLight") or v:IsA("SpotLight") then
@@ -134,98 +141,92 @@ local function spawnRipper()
 	end
 	Lighting.Ambient = Color3.fromRGB(80, 10, 10)
 
-	local Ripper = Spawner:Create({
-		Entity = {
-			Name = "Ripper",
-			Asset = "https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/main/Ripper.rbxm",
-			HeightOffset = 0
-		},
-		Movement = {
-			Speed = 280,          -- very fast
-			Delay = 1.5,
-			Reversed = false
-		},
-		Damage = {
-			Enabled = true,
-			IgnoreHiding = false,
-			Range = 50,
-			Amount = 125
-		},
-		Rebounding = {
-			Enabled = false,      -- Ripper does NOT rebound like Ambush
-			Type = "Ambush",
-			Min = 1,
-			Max = 1,
-			Delay = 2
-		},
-		Lights = {
-			Flicker = {Enabled = false}, -- no normal flicker, just red
-			Shatter = false,
-			Repair = false
-		},
-		Earthquake = {Enabled = true},
-		CameraShake = {
-			Enabled = true,
-			Values = {2.5, 30, 0.1, 1},
-			Range = 140
-		},
-		Crucifixion = {
-			Type = "Curious",
-			Enabled = true,
-			Range = 40,
-			Resist = false,
-			Break = true
-		},
-		Death = {
-			Type = "Guiding",
-			Hints = {
-				"You died to Ripper.",
-				"The room turned red...",
-				"He is much faster than Rush.",
-				"Hide until he is gone."
+	-- Roar first
+	local roar = Instance.new("Sound")
+	roar.SoundId = "rbxassetid://12971875415"
+	roar.Volume = 3
+	roar.Parent = workspace
+	roar:Play()
+	game:GetService("Debris"):AddItem(roar, 6)
+
+	task.delay(3.5, function()
+		print("[Favorites Mode] Ripper is now spawning...")
+
+		local Ripper = Spawner:Create({
+			Entity = {
+				Name = "Ripper",
+				Asset = "https://raw.githubusercontent.com/FireGiraffe/Favorites-Mode-Doors/main/Ripper.rbxm",
+				HeightOffset = 0
 			},
-			Cause = "Ripper"
-		}
-	})
+			Movement = {
+				Speed = 160,
+				Delay = 0.2,
+				Reversed = false
+			},
+			Damage = {
+				Enabled = true,
+				IgnoreHiding = false,
+				Range = 50,
+				Amount = 125
+			},
+			Rebounding = {
+				Enabled = false,
+				Type = "Ambush",
+				Min = 1,
+				Max = 1,
+				Delay = 2
+			},
+			Lights = {
+				Flicker = {Enabled = false},
+				Shatter = false,
+				Repair = false
+			},
+			Earthquake = {Enabled = true},
+			CameraShake = {
+				Enabled = true,
+				Values = {2.5, 30, 0.1, 1},
+				Range = 140
+			},
+			Crucifixion = {
+				Type = "Curious",
+				Enabled = true,
+				Range = 40,
+				Resist = false,
+				Break = true
+			},
+			Death = {
+				Type = "Guiding",
+				Hints = {
+					"You died to Ripper.",
+					"His arrival is shown by the light color and his roar.",
+					"He waits for you to get out of the locker once he reaches the door.",
+					"Hide until he is gone."
+				},
+				Cause = "Ripper"
+			}
+		})
 
-	Ripper:SetCallback("OnSpawned", function()
-		local model = Ripper.Model
-		if not model then return end
+		Ripper:SetCallback("OnDespawned", function()
+			entityActive = false
+		end)
 
-		-- Loud roar (you can replace the ID later if you have the real one)
-		local roar = Instance.new("Sound")
-		roar.SoundId = "rbxassetid://12971875415" -- placeholder roar
-		roar.Volume = 3
-		roar.Parent = workspace
-		roar:Play()
-		game:GetService("Debris"):AddItem(roar, 6)
+		Ripper:Run(true)
 	end)
-
-	Ripper:Run(true)
 end
 
--- Natural spawning loop
-task.spawn(function()
-	while true do
-		task.wait(1)
+-------------------------------------------------
+-- NATURAL SPAWNING
+-------------------------------------------------
+LatestRoom:GetPropertyChangedSignal("Value"):Connect(function()
+	local door = LatestRoom.Value
+	if door < MIN_DOOR or door > MAX_DOOR then return end
+	if entityActive then return end          -- extra safety
 
-		local door = getDoorNumber()
-		if door > currentDoor then
-			currentDoor = door
-
-			if door >= MIN_DOOR and door <= MAX_DOOR then
-				-- Threat chance
-				if not hasSpawnedThreat and math.random(1, 100) <= 15 then
-					spawnThreat()
-				end
-
-				-- Ripper chance
-				if not hasSpawnedRipper and math.random(1, 100) <= 12 then
-					spawnRipper()
-				end
-			end
-		end
+	if not hasSpawnedThreat and math.random(1, 100) <= 18 then
+		spawnThreat()
+	elseif not hasSpawnedRipper and math.random(1, 100) <= 14 then
+		spawnRipper()
 	end
 end)
 
-print("[Favorites Mode] Loaded with Threat + Ripper")
+print("[Favorites Mode] Loaded")
